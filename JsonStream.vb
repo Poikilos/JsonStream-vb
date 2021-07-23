@@ -208,6 +208,7 @@ Public Class JsonStream
                 Throw New FormatException("JSON must be enclosed like ""[...]"" or ""{...}""")
             End If
         End If
+        Throw New NotImplementedException("This feature is not yet implemented.")
     End Function
     Public Shared Function Serialize(o As Object) As String
         Init()
@@ -217,6 +218,7 @@ Public Class JsonStream
         'Catch
         'It is not a string if it doesn't have Trim.
         'End Try
+        Throw New NotImplementedException("This feature is not yet implemented.")
     End Function
 
 End Class
