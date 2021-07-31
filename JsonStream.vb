@@ -3,18 +3,18 @@
 'Copyright(c) 2021 Jake "Poikilos" Gustafson
 '
 'Permission Is hereby granted, free Of charge, to any person obtaining a copy
-'of this software And associated documentation files (the "Software"), to deal
+'of this software and associated documentation files (the "Software"), to deal
 'in the Software without restriction, including without limitation the rights
 'to use, copy, modify, merge, publish, distribute, sublicense, And/Or sell
-'copies of the Software, And to permit persons to whom the Software Is
+'copies of the Software, and to permit persons to whom the Software Is
 'furnished to do so, subject to the following conditions
 '
-'The above copyright notice And this permission notice shall be included In all
+'The above copyright notice and this permission notice shall be included In all
 'copies Or substantial portions of the Software.
 '
 'THE SOFTWARE Is PROVIDED "AS IS", WITHOUT WARRANTY Of ANY KIND, EXPRESS Or
 'IMPLIED, INCLUDING BUT Not LIMITED To THE WARRANTIES Of MERCHANTABILITY,
-'FITNESS FOR A PARTICULAR PURPOSE And NONINFRINGEMENT. IN NO EVENT SHALL THE
+'FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 'AUTHORS Or COPYRIGHT HOLDERS BE LIABLE For ANY CLAIM, DAMAGES Or OTHER
 'LIABILITY, WHETHER In AN ACTION Of CONTRACT, TORT Or OTHERWISE, ARISING FROM,
 'OUT OF Or IN CONNECTION WITH THE SOFTWARE Or THE USE Or OTHER DEALINGS IN THE
@@ -34,10 +34,10 @@ Public Class JsonStream
     ''' https://docs.microsoft.com/en-us/dotnet/visual-basic/misc/bc30480).
     ''' </summary>
     Private Shared Sub Init()
-        If Initialized Then
+        If JsonStream.Initialized Then
             Exit Sub
         End If
-        Initialized = True
+        JsonStream.Initialized = True
         ' Set escape sequences used in the JSON standard (See
         ' <https://www.freeformatter.com/json-escape.html#:~:text=The%20following%20characters%20are%20reserved%20in%20JSON%20and,with%20%5C%22%207%20Backslash%20is%20replaced%20with%20%5C%5C>).
         Escapes("\b") = vbBack
@@ -48,7 +48,7 @@ Public Class JsonStream
         Escapes("\""") = """"
         '^ Why no "\\"? Answer:
         '  The backslash is skipped since it must be added first to avoid doubling and removed
-        '  last to avoid un-escaping And leaving letters behind.
+        '  last to avoid un-escaping and leaving letters behind.
         '^ Why no "\u"? Answer:
         '  Unicode sequences are not yet implemented.
 
@@ -62,10 +62,16 @@ Public Class JsonStream
                 Throw New MissingFieldException("Each character in Openers must exist as a key in Enclosures.")
             End If
         Next
-        If Not Enclosures.Count > Openers.Length Then
+        If Enclosures.Count > Openers.Length Then
+            Console.Error.WriteLine("Error: Openers.Length is " & Openers.Length & " but Enclosures.Count is " & Enclosures.Count & ".")
             Throw New MissingFieldException("Each key in Enclosures must also be cached as a character in Openers.")
         End If
     End Sub
+    Public Shared ReadOnly Property NewLine As String
+        Get
+            Return vbCrLf
+        End Get
+    End Property
     ''' <summary>
     ''' Convert a vb string to JSON format (This does not add quotes).
     ''' </summary>
@@ -197,7 +203,7 @@ Public Class JsonStream
         s = s.Trim()
         If s.StartsWith("[") Then
             If Not s.EndsWith("]") Then
-                Throw New FormatException("The JSON branch started with a ")
+                Throw New FormatException("The JSON branch started with a ""["" at " & offset & " so it is missing ""]"" at " & (offset + s.Length))
             End If
             Dim o As List(Of Object) = Nothing
         ElseIf s.StartsWith("{") Then
@@ -208,17 +214,69 @@ Public Class JsonStream
                 Throw New FormatException("JSON must be enclosed like ""[...]"" or ""{...}""")
             End If
         End If
-        Throw New NotImplementedException("This feature is not yet implemented.")
+        Throw New NotImplementedException("Deserialize is not yet implemented.")
     End Function
+
+    ''' <summary>
+    ''' Check if o is actually defined "As" a number type rather than merely as a number string like
+    ''' IsNumeric does.
+    ''' </summary>
+    ''' <param name="o"></param>
+    ''' <returns></returns>
+    Public Shared Function IsNumericType(o As Object) As Boolean
+        If o.GetType() Is GetType(Integer) Then
+            Return True
+        ElseIf o.GetType() Is GetType(Byte) Then
+            Return True
+        ElseIf o.GetType() Is GetType(Long) Then
+            Return True
+        ElseIf o.GetType() Is GetType(Decimal) Then
+            Return True
+        ElseIf o.GetType() Is GetType(Double) Then
+            Return True
+        ElseIf o.GetType() Is GetType(SByte) Then
+            'signed byte
+            Return True
+        ElseIf o.GetType() Is GetType(Short) Then
+            Return True
+        ElseIf o.GetType() Is GetType(Single) Then
+            Return True
+        ElseIf o.GetType() Is GetType(UInteger) Then
+            Return True
+        ElseIf o.GetType() Is GetType(ULong) Then
+            Return True
+        ElseIf o.GetType() Is GetType(UShort) Then
+            Return True
+        End If
+        Return False
+    End Function
+
+    ''' <summary>
+    ''' Serialize adds the quotes only if necessary (if non-number, non-boolean, non-null)
+    ''' </summary>
+    ''' <param name="o"></param>
+    ''' <returns></returns>
     Public Shared Function Serialize(o As Object) As String
         Init()
-        'Try
-        Dim s As String = o.Trim()
-        Return Escape(s)
-        'Catch
-        'It is not a string if it doesn't have Trim.
-        'End Try
-        Throw New NotImplementedException("This feature is not yet implemented.")
+        'See <https://stackoverflow.com/questions/6580044/how-to-check-if-an-object-is-a-certain-type>
+        If IsNothing(o) Then
+            Return "null"
+        ElseIf o.GetType() Is GetType(Boolean) Then
+            'In JSON, booleans are not quoted and are lowercase (See 
+            '<https://www.tutorialspoint.com/json/json_data_types.htm#:~:text=JSON%20-%20DataTypes%20%20%20%20Sr.No.%20,sequence%20of%20values%20%204%20more%20rows%20>).
+            If (o) Then
+                Return "true"
+            Else
+                Return "false"
+            End If
+        ElseIf JsonStream.IsNumericType(o) Then
+            'In JSON, numbers are not quoted.
+            Return CStr(o)
+        ElseIf o.GetType() Is GetType(String) Then
+            Dim s As String = o.Trim()
+            Return """" & Escape(s) & """"
+        End If
+        Throw New ArgumentException("The type " & o.GetType().Name & " (" & o.GetType().FullName & ") is not implemented in JSonStream.Serialize.")
     End Function
 
 End Class
