@@ -79,7 +79,7 @@ Public Class JsonStream
     ''' <returns>Get the string formatted and ready to be placed between quotes in a JSON file.</returns>
     Public Shared Function Escape(value As String) As String
         Init()
-        If value Is Nothing Then
+        If IsNothing(value) Then
             Throw New ArgumentException("The argument should be a string.")
         End If
         ' See <https://stackoverflow.com/questions/18628917/how-can-iterate-in-dictionary-in-vb-net>:
