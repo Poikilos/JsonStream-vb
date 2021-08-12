@@ -20,6 +20,10 @@
 'OUT OF Or IN CONNECTION WITH THE SOFTWARE Or THE USE Or OTHER DEALINGS IN THE
 'SOFTWARE.
 '
+
+#Disable Warning BC42302 ' XML comment must be the first statement on a line
+'^ Disable the warning so that the format "'''< comment" can be used (for a VB doxygen tool).
+
 Public Class JsonStream
     Private Shared Initialized As Boolean = False
     Private Shared Enclosures As Dictionary(Of Char, Char) = New Dictionary(Of Char, Char) '''< Store cononical JSON-defined end for each start of an enclosure.
